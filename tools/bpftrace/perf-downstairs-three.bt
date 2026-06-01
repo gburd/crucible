@@ -1,0 +1,64 @@
+#!/usr/bin/env bpftrace
+/*
+ * Linux bpftrace counterpart to tools/dtrace/perf-downstairs-three.d
+ *
+ * Trace a downstairs IO and measure its time in three parts:
+ *   1. submit:  IO received (from upstairs) to sending it to the OS.
+ *   2. os:      OS service time (for flush, time to flush all extents).
+ *   3. ack:     OS done to the downstairs sending the ACK back to upstairs.
+ *
+ * Grouped by IO type (read / write / writeunwritten / flush). arg0 is the
+ * job id. Requires root. Attach to a running downstairs by PID:
+ *
+ *     sudo bpftrace -p $(pgrep -n crucible-downstairs) tools/bpftrace/perf-downstairs-three.bt
+ */
+
+/* Phase 1 start: IO received by the downstairs. */
+usdt:*:crucible_downstairs:submit-read-start    { @s[pid, arg0] = nsecs; @op[pid, arg0] = "read"; }
+usdt:*:crucible_downstairs:submit-write-start   { @s[pid, arg0] = nsecs; @op[pid, arg0] = "write"; }
+usdt:*:crucible_downstairs:submit-writeunwritten-start { @s[pid, arg0] = nsecs; @op[pid, arg0] = "writeunwritten"; }
+usdt:*:crucible_downstairs:submit-flush-start   { @s[pid, arg0] = nsecs; @op[pid, arg0] = "flush"; }
+
+/* Phase 1 done / phase 2 start: handed off to the OS. */
+usdt:*:crucible_downstairs:os-read-start,
+usdt:*:crucible_downstairs:os-write-start,
+usdt:*:crucible_downstairs:os-writeunwritten-start,
+usdt:*:crucible_downstairs:os-flush-start
+/@s[pid, arg0]/
+{
+    @submit[@op[pid, arg0]] = hist(nsecs - @s[pid, arg0]);
+    delete(@s[pid, arg0]);
+    @os[pid, arg0] = nsecs;
+}
+
+/* Phase 2 done / phase 3 start: OS returned. */
+usdt:*:crucible_downstairs:os-read-done,
+usdt:*:crucible_downstairs:os-write-done,
+usdt:*:crucible_downstairs:os-writeunwritten-done,
+usdt:*:crucible_downstairs:os-flush-done
+/@os[pid, arg0]/
+{
+    @os_time[@op[pid, arg0]] = hist(nsecs - @os[pid, arg0]);
+    delete(@os[pid, arg0]);
+    @f[pid, arg0] = nsecs;
+}
+
+/* Phase 3 done: ACK sent back to the upstairs. */
+usdt:*:crucible_downstairs:submit-read-done,
+usdt:*:crucible_downstairs:submit-write-done,
+usdt:*:crucible_downstairs:submit-writeunwritten-done,
+usdt:*:crucible_downstairs:submit-flush-done
+/@f[pid, arg0]/
+{
+    @ack[@op[pid, arg0]] = hist(nsecs - @f[pid, arg0]);
+    delete(@f[pid, arg0]);
+    delete(@op[pid, arg0]);
+}
+
+END
+{
+    clear(@s);
+    clear(@os);
+    clear(@f);
+    clear(@op);
+}
