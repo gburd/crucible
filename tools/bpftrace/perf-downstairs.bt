@@ -1,0 +1,38 @@
+#!/usr/bin/env bpftrace
+/*
+ * Linux bpftrace counterpart to tools/dtrace/perf-downstairs.d
+ *
+ * Trace each IO from when the downstairs receives it (submit-*-start) to when
+ * the downstairs has completed it and is about to ack the upstairs
+ * (submit-*-done), grouping the latency histogram by IO type (read / write /
+ * writeunwritten / flush). arg0 is the job id.
+ *
+ * Requires root. Attach to a running downstairs by PID:
+ *
+ *     sudo bpftrace -p $(pgrep -n crucible-downstairs) tools/bpftrace/perf-downstairs.bt
+ *
+ * The leading 'usdt:*:' wildcard matches the binary regardless of its path,
+ * mirroring the DTrace 'crucible_downstairs*:::' module wildcard.
+ */
+
+usdt:*:crucible_downstairs:submit-read-start    { @start[pid, arg0] = nsecs; @op[pid, arg0] = "read"; }
+usdt:*:crucible_downstairs:submit-write-start   { @start[pid, arg0] = nsecs; @op[pid, arg0] = "write"; }
+usdt:*:crucible_downstairs:submit-writeunwritten-start { @start[pid, arg0] = nsecs; @op[pid, arg0] = "writeunwritten"; }
+usdt:*:crucible_downstairs:submit-flush-start   { @start[pid, arg0] = nsecs; @op[pid, arg0] = "flush"; }
+
+usdt:*:crucible_downstairs:submit-read-done,
+usdt:*:crucible_downstairs:submit-write-done,
+usdt:*:crucible_downstairs:submit-writeunwritten-done,
+usdt:*:crucible_downstairs:submit-flush-done
+/@start[pid, arg0]/
+{
+    @time[@op[pid, arg0]] = hist(nsecs - @start[pid, arg0]);
+    delete(@start[pid, arg0]);
+    delete(@op[pid, arg0]);
+}
+
+END
+{
+    clear(@start);
+    clear(@op);
+}

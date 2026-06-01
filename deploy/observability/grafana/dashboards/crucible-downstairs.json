@@ -1,0 +1,89 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "title": "Crucible Downstairs",
+  "uid": "crucible-downstairs",
+  "tags": ["crucible"],
+  "timezone": "",
+  "schemaVersion": 39,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "15s",
+  "templating": {
+    "list": [
+      {
+        "name": "downstairs_uuid",
+        "label": "Downstairs",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(crucible_downstairs_write, downstairs_uuid)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Write ops/sec",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(crucible_downstairs_write{downstairs_uuid=~\"$downstairs_uuid\"}[5m])",
+          "legendFormat": "{{downstairs_uuid}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Read ops/sec",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(crucible_downstairs_read{downstairs_uuid=~\"$downstairs_uuid\"}[5m])",
+          "legendFormat": "{{downstairs_uuid}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Flush ops/sec",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(crucible_downstairs_flush{downstairs_uuid=~\"$downstairs_uuid\"}[5m])",
+          "legendFormat": "{{downstairs_uuid}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Cumulative connects",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "crucible_downstairs_connect{downstairs_uuid=~\"$downstairs_uuid\"}",
+          "legendFormat": "{{downstairs_uuid}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
