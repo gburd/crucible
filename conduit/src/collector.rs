@@ -46,8 +46,13 @@ async fn collect_one(
     base: &str,
     log: &Logger,
 ) -> anyhow::Result<Vec<Sample>> {
-    let results: oximeter::types::ProducerResults =
-        client.get(base).send().await?.error_for_status()?.json().await?;
+    let results: oximeter::types::ProducerResults = client
+        .get(base)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
 
     let mut samples = Vec::new();
     for item in results {

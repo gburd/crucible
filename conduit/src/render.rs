@@ -184,7 +184,9 @@ mod test {
         let out = to_prometheus(&[sample]);
 
         assert!(out.contains("# TYPE crucible_downstairs_read counter"));
-        assert!(out.contains("downstairs_uuid=\"00000000-0000-0000-0000-000000000000\""));
+        assert!(out.contains(
+            "downstairs_uuid=\"00000000-0000-0000-0000-000000000000\""
+        ));
         assert!(out.contains(" 7 "));
     }
 }
