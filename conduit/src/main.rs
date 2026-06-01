@@ -93,10 +93,14 @@ async fn main() -> anyhow::Result<()> {
         ..Default::default()
     };
 
-    let server =
-        HttpServerStarter::new(&config_dropshot, server::build_api(), conduit, &log)
-            .map_err(|e| anyhow::anyhow!("failed to create server: {e}"))?
-            .start();
+    let server = HttpServerStarter::new(
+        &config_dropshot,
+        server::build_api(),
+        conduit,
+        &log,
+    )
+    .map_err(|e| anyhow::anyhow!("failed to create server: {e}"))?
+    .start();
 
     info!(log, "conduit listening";
         "bind" => %args.bind,
